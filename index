@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOM Dashboard - Estilo Excel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --excel-green: #1d6f42;
+            --excel-blue: #4472c4;
+            --excel-blue-dark: #2f5597;
+            --border-color: #8eaadb;
+            --row-even: #d9e1f2;
+            --warning-bg: #ffff00;
+            --warning-text: #cc0000;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Calibri', 'Arial', sans-serif; 
+            font-size: 11px; 
+            margin: 0; 
+            padding: 15px;
+            background: #f0f2f5; 
+        }
+
+        .container { max-width: 100%; overflow-x: hidden; }
+
+        .controls { 
+            margin-bottom: 15px; 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-excel { 
+            background: var(--excel-green); 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 12px;
+        }
+        .btn-excel:hover { background: #165633; }
+        
+        .btn-edit {
+            background: var(--excel-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 12px;
+        }
+        .btn-edit:hover { background: #365a9c; }
+        .btn-edit.active { background: #c00; }
+
+        .edit-hint {
+            font-size: 10px;
+            color: #666;
+            margin-left: 10px;
+            display: none;
+        }
+        .edit-mode .edit-hint { display: inline; }
+
+        /* 📱 Tabla responsiva */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 900px; /* Evita que se aplaste en móvil */
+        }
+
+        th { 
+            background: var(--excel-blue); 
+            color: white; 
+            border: 1px solid var(--border-color); 
+            padding: 8px 10px; 
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        td { 
+            border: 1px solid var(--border-color); 
+            padding: 6px 10px; 
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        tr:nth-child(even) { background-color: var(--row-even); }
+        tr:hover { background-color: #f0f5ff; }
+
+        /* ✏️ Celdas editables */
+        td[contenteditable="true"] {
+            cursor: text;
+            transition: background 0.15s;
+        }
+        
+        td[contenteditable="true"]:hover {
+            background: #fff9c4;
+            outline: 2px dashed #ffc107;
+            outline-offset: -2px;
+        }
+        
+        td[contenteditable="true"]:focus {
+            background: #fff;
+            outline: 2px solid var(--excel-blue);
+            outline-offset: -2px;
+            box-shadow: inset 0 0 0 2px rgba(68, 114, 196, 0.1);
+        }
+
+        /* Modo edición activo */
+        .edit-mode td.editable {
+            cursor: text;
+        }
+        .edit-mode td.editable:hover {
+            background: #fff9c4;
+        }
+
+        .poco-stock { 
+            background: var(--warning-bg); 
+            color: var(--warning-text); 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        
+        .total-row { 
+            background: var(--excel-blue) !important; 
+            color: white; 
+            font-weight: bold; 
+        }
+        
+        .total-val { 
+            background: var(--excel-blue-dark); 
+            color: white; 
+            text-align: right; 
+            padding-right: 15px; 
+        }
+        
+        a { color: #0563c1; text-decoration: underline; }
+        a:hover { color: #004080; }
+
+        /* 📱 Responsive: tarjetas en móvil muy pequeño */
+        @media (max-width: 600px) {
+            body { padding: 10px; font-size: 12px; }
+            
+            .controls { flex-direction: column; align-items: stretch; }
+            .btn-excel, .btn-edit { width: 100%; }
+            
+            th, td { padding: 5px 8px; font-size: 11px; }
+            
+            /* Opcional: vista de tarjetas para móviles */
+            .card-view { display: none; }
+        }
+
+        /* Notas */
+        #notas-adicionales {
+            margin-top: 25px; 
+            padding: 15px; 
+            background-color: #ffffff; 
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
+            font-family: Calibri, Arial, sans-serif;
+        }
+        #notas-adicionales h3 {
+            color: var(--excel-blue-dark); 
+            margin-top: 0; 
+            border-bottom: 2px solid var(--excel-blue); 
+            padding-bottom: 5px;
+            font-size: 14px;
+        }
+        #notas-adicionales ul {
+            list-style-type: none; 
+            padding-left: 5px; 
+            line-height: 1.8;
+            margin: 0;
+        }
+        #notas-adicionales li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <button class="btn-excel" onclick="exportarExcel()">📥 EXPORTAR A EXCEL (.xlsx)</button>
+        <button class="btn-edit" id="btnToggleEdit" onclick="toggleEditMode()">✏️ ACTIVAR EDICIÓN</button>
+        <span class="edit-hint">💡 Haz clic en cualquier celda amarilla para editar</span>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="tablaBOM">
+            <thead>
+                <tr>
+                    <th>Descripcion</th>
+                    <th>Fabricante</th>
+                    <th>Nº ref. fabric</th>
+                    <th>Proveedor</th>
+                    <th>Código Proveedor</th>
+                    <th>Tiempo de envío (días)</th>
+                    <th class="editable-header">Cantidad</th>
+                    <th class="editable-header">Precio</th>
+                    <th>Precio Total</th>
+                    <th>Poco Stock</th>
+                    <th>Enlace</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="8" style="text-align: right;">TOTAL GENERAL</td>
+                    <td id="totalGeneral" class="total-val">0,00 €</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div id="notas-adicionales">
+    <h3>Notas Importantes de Compra</h3>
+    <ul>
+        <li><strong>1. Condiciones de envío DigiKey:</strong> 
+            <a href="https://www.digikey.es/es/help-support/delivery-information/delivery-time-and-cost" target="_blank">Ver tiempos y costes de entrega</a>
+        </li>
+        <li><strong>2. Carrito de compra Mouser:</strong> 
+            <a href="https://www.mouser.es/Tools/SavedCart/Share?AccessID=8aa49678b1" target="_blank">Acceder al carrito guardado (ID: 226a6e40b3)</a>
+        </li>
+        <li><strong>3. Condiciones de envío Mouser:</strong> 
+            <a href="https://www.mouser.es/help/orders-shipping" target="_blank">Ayuda con pedidos y envíos</a>
+        </li>
+    </ul>
+</div>
+
+<script>
+    let datosOriginales = [];
+    let modoEdicion = false;
+
+    async function cargar() {
+        try {
+            const res = await fetch('data2.json');
+            const data = await res.json();
+            datosOriginales = JSON.parse(JSON.stringify(data)); // Copia profunda
+            renderizarTabla(data);
+        } catch (error) {
+            console.error('Error cargando datos:', error);
+            document.getElementById('cuerpoTabla').innerHTML = 
+                '<tr><td colspan="11" style="text-align:center; padding:20px; color:#c00;">⚠️ Error cargando data2.json</td></tr>';
+        }
+    }
+
+    function renderizarTabla(data) {
+        const tabla = document.getElementById('cuerpoTabla');
+        tabla.innerHTML = '';
+        let sumaTotal = 0;
+
+        data.forEach((item, index) => {
+            const pUnit = parseFloat(item.Precio_Unitario?.replace('€','').replace(',','.').trim()) || 0;
+            const subtotal = pUnit * (item.Cantidad || 0);
+            sumaTotal += subtotal;
+            const esPocoStock = (item.Stock || 0) <= 12;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.Descripcion || ''}</td>
+                <td>${item.Fabricante || '-'}</td>
+                <td>${item.No_ref_fabric || ''}</td>
+                <td>${item.Proveedor || ''}</td>
+                <td>${item.Codigo_Proveedor || ''}</td>
+                <td>${item.Envio || ''}</td>
+                <td class="editable" data-field="Cantidad" data-index="${index}" 
+                    ${modoEdicion ? 'contenteditable="true"' : ''}>${item.Cantidad || 0}</td>
+                <td class="editable" data-field="Precio_Unitario" data-index="${index}"
+                    ${modoEdicion ? 'contenteditable="true"' : ''}>${item.Precio_Unitario || '0,00 €'}</td>
+                <td class="precio-total">${subtotal.toLocaleString('es-ES', {minimumFractionDigits: 3})} €</td>
+                <td class="${esPocoStock ? 'poco-stock' : ''}">
+                    ${esPocoStock ? 'SÍ (' + (item.Stock||0) + ')' : 'NO (' + (item.Stock||0) + ')'}
+                </td>
+                <td>${item.Enlace ? `<a href="${item.Enlace}" target="_blank">Link</a>` : '-'}</td>
+            `;
+            tabla.appendChild(tr);
+        });
+
+        // Actualizar total
+        document.getElementById('totalGeneral').innerText = 
+            sumaTotal.toLocaleString('es-ES', {style: 'currency', currency: 'EUR'});
+
+        // Añadir listeners para recalcular al editar
+        if (modoEdicion) {
+            document.querySelectorAll('td.editable').forEach(td => {
+                td.addEventListener('blur', recalcularFila);
+                td.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        td.blur();
+                    }
+                });
+            });
+        }
+    }
+
+    function recalcularFila(e) {
+        const td = e.target;
+        const index = parseInt(td.dataset.index);
+        const field = td.dataset.field;
+        
+        // Actualizar dato en el array
+        if (field === 'Cantidad') {
+            datosOriginales[index].Cantidad = parseInt(td.textContent) || 0;
+        } else if (field === 'Precio_Unitario') {
+            // Mantener formato con €
+            let texto = td.textContent.trim();
+            if (!texto.includes('€')) texto += ' €';
+            datosOriginales[index].Precio_Unitario = texto;
+        }
+
+        // Recalcular subtotal de la fila
+        const pUnit = parseFloat(datosOriginales[index].Precio_Unitario?.replace('€','').replace(',','.').trim()) || 0;
+        const cantidad = datosOriginales[index].Cantidad || 0;
+        const subtotal = pUnit * cantidad;
+        
+        // Actualizar celda de total
+        const fila = td.closest('tr');
+        fila.querySelector('.precio-total').textContent = 
+            subtotal.toLocaleString('es-ES', {minimumFractionDigits: 3}) + ' €';
+
+        // Recalcular total general
+        recalcularTotalGeneral();
+    }
+
+    function recalcularTotalGeneral() {
+        let sumaTotal = 0;
+        datosOriginales.forEach(item => {
+            const pUnit = parseFloat(item.Precio_Unitario?.replace('€','').replace(',','.').trim()) || 0;
+            sumaTotal += pUnit * (item.Cantidad || 0);
+        });
+        document.getElementById('totalGeneral').innerText = 
+            sumaTotal.toLocaleString('es-ES', {style: 'currency', currency: 'EUR'});
+    }
+
+    function toggleEditMode() {
+        modoEdicion = !modoEdicion;
+        const btn = document.getElementById('btnToggleEdit');
+        const hint = document.querySelector('.edit-hint');
+        const cuerpo = document.getElementById('cuerpoTabla');
+        
+        if (modoEdicion) {
+            btn.textContent = '✅ GUARDAR CAMBIOS';
+            btn.classList.add('active');
+            document.body.classList.add('edit-mode');
+            cuerpo.querySelectorAll('td.editable').forEach(td => {
+                td.contentEditable = true;
+            });
+        } else {
+            btn.textContent = '✏️ ACTIVAR EDICIÓN';
+            btn.classList.remove('active');
+            document.body.classList.remove('edit-mode');
+            cuerpo.querySelectorAll('td.editable').forEach(td => {
+                td.contentEditable = false;
+            });
+            // Aquí podrías guardar en localStorage o enviar al servidor
+            console.log('Datos actualizados:', datosOriginales);
+        }
+    }
+
+    function exportarExcel() {
+        // Si estás editando, guarda primero los cambios visuales en el array
+        if (modoEdicion) {
+            document.querySelectorAll('td.editable').forEach(td => {
+                const index = parseInt(td.dataset.index);
+                const field = td.dataset.field;
+                if (field === 'Cantidad') {
+                    datosOriginales[index].Cantidad = parseInt(td.textContent) || 0;
+                } else if (field === 'Precio_Unitario') {
+                    let texto = td.textContent.trim();
+                    if (!texto.includes('€')) texto += ' €';
+                    datosOriginales[index].Precio_Unitario = texto;
+                }
+            });
+        }
+        
+        const table = document.getElementById("tablaBOM");
+        const wb = XLSX.utils.table_to_book(table, {sheet: "BOM"});
+        XLSX.writeFile(wb, "BOM_Placa_LED_Final.xlsx");
+    }
+
+    // Inicializar
+    cargar();
+</script>
+
+</body>
+</html>
