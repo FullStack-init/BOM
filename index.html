@@ -20,7 +20,7 @@
     </script>
     
     <style>
-        body { font-size: 11px; -webkit-text-size-adjust: 100%; }
+        body { font-size: 11px; -webkit-text-size-adjust: 100%; margin: 0; padding: 0; }
         
         /* 📱 Scroll optimizado */
         .table-scroll {
@@ -29,7 +29,6 @@
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 transparent;
             position: relative;
-            max-height: calc(100vh - 280px);
         }
         .table-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .table-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -101,7 +100,7 @@
         /* Botones táctiles */
         @media (max-width: 768px) {
             .btn { min-height: 44px; }
-            body { padding: 6px; }
+            body { padding: 4px; }
             .table-compact th, .table-compact td { padding: 5px 6px !important; }
         }
         
@@ -111,16 +110,23 @@
             top: 0;
             z-index: 20;
         }
+        
+        /* Prevenir layout shift en rotación */
+        .table-wrapper {
+            contain: layout;
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen">
 
 <div class="container mx-auto px-2 py-2 max-w-full">
     
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-        <h1 class="text-sm sm:text-base font-bold text-base-content">📋 BOM Dashboard</h1>
-        <button class="btn btn-sm btn-ghost btn-square" id="btnToggleAdmin" onclick="toggleAdminPanel()" aria-label="Modo Admin">🔧</button>
+    <!-- Header con Admin Button a la izquierda -->
+    <div class="flex items-center gap-2 mb-2 bg-base-100 p-2 rounded-lg shadow-sm border border-base-300">
+        <button class="btn btn-ghost btn-sm btn-square flex-shrink-0" id="btnToggleAdmin" onclick="toggleAdminPanel()" aria-label="Modo Admin" title="Configuración">
+            🔧
+        </button>
+        <h1 class="text-sm sm:text-base font-bold text-base-content whitespace-nowrap">BOM Dashboard</h1>
     </div>
 
     <!-- Panel Admin -->
@@ -153,9 +159,9 @@
     </div>
 
     <!-- Tabla Compacta -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-3">
+    <div class="card bg-base-100 shadow-sm border border-base-300 mb-3 table-wrapper">
         <div class="table-scroll" id="tableScroll">
-            <table class="table table-zebra table-compact w-full min-w-[1050px]">
+            <table class="table table-zebra table-compact w-full min-w-[1050px]" id="mainTable">
                 <thead class="bg-excel-blue text-white sticky-header">
                     <tr>
                         <th class="col-num">#</th>
@@ -209,31 +215,75 @@
 </div>
 
 <script>
-    const STORAGE_KEY = 'bom_compact_v1', DATA_FILE = 'data.json';
+    const STORAGE_KEY = 'bom_compact_v2', DATA_FILE = 'data.json';
     const EDITABLES = ['Descripcion','Fabricante','No_ref_fabric','Proveedor','Codigo_Proveedor','Envio','Cantidad','Precio_Unitario','Stock','Enlace'];
     let orig = [], actual = [], editMode = false, adminOpen = false, changes = false, nextId = 0;
 
-    async function init() { await load(); applyStorage(); genId(); render(); setupScrollHint(); }
+    async function init() { 
+        await load(); 
+        applyStorage(); 
+        genId(); 
+        render(); 
+        setupScrollHint();
+        setupOrientationFix(); // ← NUEVO: Arreglo para rotación
+    }
+    
     async function load() {
         try { const r = await fetch(DATA_FILE); if(!r.ok) throw new Error(r.status); orig = await r.json(); } 
         catch(e) { console.error(e); alert(`❌ Error cargando ${DATA_FILE}`); orig = []; }
     }
+    
     function genId() { nextId = Math.max(-1, ...actual.map((d,i)=>d._id??i)) + 1; }
 
     function saveStorage() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ actual, nextId, ts: new Date().toISOString()}));
         changes = false; status('✅ Guardado', 'success'); updateBtns();
     }
+    
     function loadStorage() {
         try { const s = localStorage.getItem(STORAGE_KEY); if(s) { const p = JSON.parse(s); if(p.nextId) nextId = p.nextId; return p.data || []; } } 
         catch(e) { console.warn(e); } return null;
     }
+    
     function applyStorage() {
         const s = loadStorage();
         if(s?.length) { actual = s; status('📦 Sesión cargada', 'info'); }
         else { actual = JSON.parse(JSON.stringify(orig)); status('🟢 Listo', 'info'); }
     }
+    
     function clearStorage() { localStorage.removeItem(STORAGE_KEY); }
+
+    // ← NUEVO: Fix para rotación de pantalla
+    function setupOrientationFix() {
+        let resizeTimeout;
+        
+        function handleResize() {
+            // Forzar recálculo del layout
+            const tableScroll = document.getElementById('tableScroll');
+            if(tableScroll) {
+                // Pequeño delay para asegurar que el DOM se actualizó
+                setTimeout(() => {
+                    tableScroll.style.overflowX = 'hidden';
+                    setTimeout(() => {
+                        tableScroll.style.overflowX = 'auto';
+                        // Disparar evento scroll para actualizar indicador
+                        tableScroll.dispatchEvent(new Event('scroll'));
+                    }, 50);
+                }, 100);
+            }
+        }
+        
+        // Escuchar cambios de orientación y resize
+        window.addEventListener('orientationchange', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(handleResize, 300);
+        });
+        
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(handleResize, 300);
+        });
+    }
 
     function setupScrollHint() {
         const scroller = document.getElementById('tableScroll');
@@ -422,7 +472,6 @@
             ]);
         });
 
-        // Fila de Total
         rows.push([
             "", "", "", "", "", "", "", "", "", 
             "TOTAL GENERAL", granTotal, "", ""
