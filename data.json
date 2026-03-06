@@ -150,7 +150,7 @@
     "Codigo_Proveedor": "B072Z7Y19F",
     "Precio_Unitario": "14,81 €",
     "Cantidad": 1,
-    "Stock": 100,
+    "Stock": 30,
     "Envio": "3-5 días",
     "Enlace": "https://www.amazon.es/dp/B072Z7Y19F",
     "Notas": ""
@@ -171,12 +171,12 @@
   {
     "Descripcion": "Adaptadores SMD-DIP",
     "Fabricante": "KeeYes",
-    "No_ref_fabric": "B085LC6ZSY",
+    "No_ref_fabric": "KYES70",
     "Proveedor": "Amazon",
-    "Codigo_Proveedor": "Amazon-KEE",
-    "Precio_Unitario": "9,99 €",
+    "Codigo_Proveedor": "B085LC6ZSY",
+    "Precio_Unitario": "18,99 €",
     "Cantidad": 1,
-    "Stock": 50,
+    "Stock": 30,
     "Envio": "3-5 días",
     "Enlace": "https://www.amazon.es/dp/B085LC6ZSY",
     "Notas": ""
@@ -197,12 +197,12 @@
   {
     "Descripcion": "Headers Macho/Hembra",
     "Fabricante": "Heevhas",
-    "No_ref_fabric": "B09JYH9G48",
+    "No_ref_fabric": "005",
     "Proveedor": "Amazon",
-    "Codigo_Proveedor": "Amazon-HEE",
-    "Precio_Unitario": "8,45 €",
+    "Codigo_Proveedor": "B09JYH9G48",
+    "Precio_Unitario": "7,99 €",
     "Cantidad": 1,
-    "Stock": 20,
+    "Stock": 30,
     "Envio": "3-5 días",
     "Enlace": "https://www.amazon.es/dp/B09JYH9G48",
     "Notas": ""
