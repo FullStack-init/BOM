@@ -21,14 +21,22 @@
     
     <style>
         body { font-size: 11px; -webkit-text-size-adjust: 100%; }
+        
+        /* 📱 Scroll optimizado */
         .table-scroll {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
             position: relative;
+            max-height: calc(100vh - 280px);
         }
-        .table-scroll::-webkit-scrollbar { display: none; }
+        .table-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: transparent; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Indicador de scroll */
         .table-scroll::after {
             content: '← desliza →';
             position: absolute;
@@ -42,69 +50,132 @@
         @media (max-width: 768px) {
             .table-scroll::after { opacity: 1; }
             .table-scroll.scrolled::after { opacity: 0; }
-            .btn { min-height: 44px; }
-            .table th, .table td { padding: 8px 6px; }
-            body { padding: 8px; }
         }
-        td[contenteditable="true"]:focus { outline: 2px solid #4472c4; background: #fff; border-radius: 2px; }
+        
+        /* 📊 Tabla compacta */
+        .table-compact th, .table-compact td {
+            padding: 4px 8px !important;
+            vertical-align: middle;
+        }
+        .table-compact th {
+            font-size: 10px;
+            height: 28px;
+        }
+        .table-compact td {
+            font-size: 10px;
+            height: 26px;
+        }
+        
+        /* Columna de numeración */
+        .col-num {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #64748b;
+            text-align: center;
+            width: 35px;
+            min-width: 35px;
+            user-select: none;
+        }
+        .table-compact thead .col-num {
+            background: #3a67b8;
+            color: white;
+        }
+        
+        /* Celdas editables */
+        td[contenteditable="true"]:focus { 
+            outline: 2px solid #4472c4; 
+            background: #fff; 
+            border-radius: 2px;
+        }
+        td[contenteditable="true"]:hover {
+            background: #fef3c7;
+            cursor: text;
+        }
+        
+        /* Poco stock */
         .poco-stock { background: #ffff00; color: #cc0000; font-weight: bold; text-align: center; }
+        
+        /* Evitar zoom en iOS */
         input, select, textarea { font-size: 16px !important; }
+        
+        /* Botones táctiles */
+        @media (max-width: 768px) {
+            .btn { min-height: 44px; }
+            body { padding: 6px; }
+            .table-compact th, .table-compact td { padding: 5px 6px !important; }
+        }
+        
+        /* Header fijo */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen">
 
-<div class="container mx-auto px-2 py-3 max-w-full">
+<div class="container mx-auto px-2 py-2 max-w-full">
     
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-        <h1 class="text-base font-bold text-base-content">📋 BOM Dashboard</h1>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+        <h1 class="text-sm sm:text-base font-bold text-base-content">📋 BOM Dashboard</h1>
         <button class="btn btn-sm btn-ghost btn-square" id="btnToggleAdmin" onclick="toggleAdminPanel()" aria-label="Modo Admin">🔧</button>
     </div>
 
     <!-- Panel Admin -->
-    <div id="adminPanel" class="hidden card bg-base-100 shadow-sm mb-4 border border-base-300">
-        <div class="card-body p-3 sm:p-4">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+    <div id="adminPanel" class="hidden card bg-base-100 shadow-sm mb-3 border border-base-300">
+        <div class="card-body p-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div class="card bg-base-200 border border-base-300">
-                    <div class="card-body p-3">
-                        <h4 class="text-[10px] sm:text-xs font-semibold uppercase text-base-content/70 mb-2">✏️ Edición</h4>
-                        <button class="btn btn-sm btn-primary w-full mb-2 text-xs" id="btnEditMode" onclick="toggleEditMode()">Habilitar Edición</button>
+                    <div class="card-body p-2">
+                        <h4 class="text-[9px] sm:text-xs font-semibold uppercase text-base-content/70 mb-1">✏️ Edición</h4>
+                        <button class="btn btn-sm btn-primary w-full mb-1 text-xs" id="btnEditMode" onclick="toggleEditMode()">Habilitar Edición</button>
                         <button class="btn btn-sm btn-secondary w-full text-xs" onclick="addComponent()">➕ Agregar</button>
                     </div>
                 </div>
                 <div class="card bg-base-200 border border-base-300">
-                    <div class="card-body p-3">
-                        <h4 class="text-[10px] sm:text-xs font-semibold uppercase text-base-content/70 mb-2">💾 Datos</h4>
-                        <button class="btn btn-sm btn-success w-full mb-2 text-xs" id="btnSave" onclick="saveStorage()" disabled>Guardar</button>
+                    <div class="card-body p-2">
+                        <h4 class="text-[9px] sm:text-xs font-semibold uppercase text-base-content/70 mb-1">💾 Datos</h4>
+                        <button class="btn btn-sm btn-success w-full mb-1 text-xs" id="btnSave" onclick="saveStorage()" disabled>Guardar</button>
                         <button class="btn btn-sm btn-error w-full text-xs" onclick="resetData()">🗑️ Restaurar</button>
                     </div>
                 </div>
                 <div class="card bg-base-200 border border-base-300">
-                    <div class="card-body p-3">
-                        <h4 class="text-[10px] sm:text-xs font-semibold uppercase text-base-content/70 mb-2">📤 Backup</h4>
+                    <div class="card-body p-2">
+                        <h4 class="text-[9px] sm:text-xs font-semibold uppercase text-base-content/70 mb-1">📤 Backup</h4>
                         <button class="btn btn-sm btn-ghost w-full border border-base-300 text-xs" onclick="exportJSON()">Descargar JSON</button>
                     </div>
                 </div>
             </div>
-            <div class="alert alert-info mt-3 py-2" id="statusBar"><span class="text-[10px] sm:text-xs">🟢 Sistema listo</span></div>
+            <div class="alert alert-info mt-2 py-1" id="statusBar"><span class="text-[9px] sm:text-xs">🟢 Sistema listo</span></div>
         </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-4">
+    <!-- Tabla Compacta -->
+    <div class="card bg-base-100 shadow-sm border border-base-300 mb-3">
         <div class="table-scroll" id="tableScroll">
-            <table class="table table-zebra w-full min-w-[1000px]">
-                <thead class="bg-excel-blue text-white text-xs">
+            <table class="table table-zebra table-compact w-full min-w-[1050px]">
+                <thead class="bg-excel-blue text-white sticky-header">
                     <tr>
-                        <th class="whitespace-nowrap">Descripcion</th><th class="whitespace-nowrap">Fabricante</th><th class="whitespace-nowrap">Nº ref.</th>
-                        <th class="whitespace-nowrap">Proveedor</th><th class="whitespace-nowrap">Cód. Prov.</th><th class="whitespace-nowrap">Envío</th>
-                        <th class="whitespace-nowrap text-center">Cant.</th><th class="whitespace-nowrap">Precio</th><th class="whitespace-nowrap">Total</th>
-                        <th class="whitespace-nowrap text-center">Stock</th><th class="whitespace-nowrap">Enlace</th>
+                        <th class="col-num">#</th>
+                        <th class="whitespace-nowrap">Descripcion</th>
+                        <th class="whitespace-nowrap">Fabricante</th>
+                        <th class="whitespace-nowrap">Nº ref.</th>
+                        <th class="whitespace-nowrap">Proveedor</th>
+                        <th class="whitespace-nowrap">Cód. Prov.</th>
+                        <th class="whitespace-nowrap">Envío</th>
+                        <th class="whitespace-nowrap text-center">Cant.</th>
+                        <th class="whitespace-nowrap">Precio</th>
+                        <th class="whitespace-nowrap">Total</th>
+                        <th class="whitespace-nowrap text-center">Stock</th>
+                        <th class="whitespace-nowrap">Enlace</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla" class="text-xs"></tbody>
-                <tfoot class="bg-excel-blue text-white text-xs font-bold">
+                <tfoot class="bg-excel-blue text-white text-xs font-bold sticky-header">
                     <tr>
+                        <td class="col-num"></td>
                         <td colspan="8" class="text-right whitespace-nowrap">TOTAL GENERAL</td>
                         <td id="totalGeneral" class="bg-excel-blue-dark whitespace-nowrap">0,00 €</td>
                         <td colspan="2"></td>
@@ -115,18 +186,20 @@
     </div>
 
     <!-- Botón Excel -->
-    <div class="flex justify-center my-4">
-        <button class="btn btn-success btn-lg w-full sm:w-auto shadow-lg" onclick="exportExcel()">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-            <span class="ml-2">EXPORTAR EXCEL PROFESIONAL</span>
+    <div class="flex justify-center my-3">
+        <button class="btn btn-success btn-md sm:btn-lg w-full sm:w-auto shadow-lg" onclick="exportExcel()">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span class="ml-2 text-sm sm:text-base">Descargar Excel</span>
         </button>
     </div>
 
     <!-- Notas -->
     <div class="card bg-base-100 shadow-sm border border-base-300">
-        <div class="card-body p-4">
-            <h3 class="card-title text-excel-blue text-sm border-b border-excel-blue pb-2 mb-3">📝 Notas</h3>
-            <ul class="text-xs space-y-2">
+        <div class="card-body p-3">
+            <h3 class="card-title text-excel-blue text-xs sm:text-sm border-b border-excel-blue pb-2 mb-2">📝 Notas</h3>
+            <ul class="text-[10px] sm:text-xs space-y-1">
                 <li><strong>1. DigiKey:</strong> <a class="link link-primary" href="https://www.digikey.es/es/help-support/delivery-information/delivery-time-and-cost" target="_blank">Tiempos y costes</a></li>
                 <li><strong>2. Mouser:</strong> <a class="link link-primary font-semibold" href="https://www.mouser.es/Tools/SavedCart/Share?AccessID=8aa49678b1" target="_blank">Carrito guardado</a></li>
                 <li><strong>3. Mouser:</strong> <a class="link link-primary" href="https://www.mouser.es/help/orders-shipping" target="_blank">Ayuda pedidos</a></li>
@@ -136,7 +209,7 @@
 </div>
 
 <script>
-    const STORAGE_KEY = 'bom_mobile_v2', DATA_FILE = 'data.json';
+    const STORAGE_KEY = 'bom_compact_v1', DATA_FILE = 'data.json';
     const EDITABLES = ['Descripcion','Fabricante','No_ref_fabric','Proveedor','Codigo_Proveedor','Envio','Cantidad','Precio_Unitario','Stock','Enlace'];
     let orig = [], actual = [], editMode = false, adminOpen = false, changes = false, nextId = 0;
 
@@ -173,29 +246,52 @@
     function render() {
         const tbody = document.getElementById('cuerpoTabla');
         tbody.innerHTML = ''; let total = 0;
+        
         actual.forEach((item, idx) => {
             const p = parsePrice(item.Precio_Unitario), qty = +item.Cantidad||0, sub = p*qty; total += sub;
             const stock = +item.Stock||0, low = stock <= 12;
-            const tr = document.createElement('tr'); tr.className = 'hover:bg-base-200 transition-colors';
+            const rowNum = idx + 1;
+            
+            const tr = document.createElement('tr'); 
+            tr.className = 'hover:bg-base-200 transition-colors';
+            
             const cols = [
-                {k:'Descripcion',e:1,w:'min-w-[120px]'}, {k:'Fabricante',e:1,w:'min-w-[80px]'}, {k:'No_ref_fabric',e:1,w:'min-w-[90px]'},
-                {k:'Proveedor',e:1,w:'min-w-[70px]'}, {k:'Codigo_Proveedor',e:1,w:'min-w-[90px]'}, {k:'Envio',e:1,w:'min-w-[60px]'},
-                {k:'Cantidad',e:1,t:'num',w:'min-w-[50px]',c:'text-center'}, {k:'Precio_Unitario',e:1,t:'price',w:'min-w-[70px]'},
-                {k:'Total',e:0,v:fmtPrice(sub),w:'min-w-[70px]'}, {k:'Stock',e:0,v:low?`SÍ (${stock})`:`NO (${stock})`,c:(low?'poco-stock':'')+' text-center',w:'min-w-[50px]'},
+                {type:'num', v:rowNum},
+                {k:'Descripcion',e:1,w:'min-w-[120px]'}, 
+                {k:'Fabricante',e:1,w:'min-w-[80px]'}, 
+                {k:'No_ref_fabric',e:1,w:'min-w-[90px]'},
+                {k:'Proveedor',e:1,w:'min-w-[70px]'}, 
+                {k:'Codigo_Proveedor',e:1,w:'min-w-[90px]'}, 
+                {k:'Envio',e:1,w:'min-w-[60px]'},
+                {k:'Cantidad',e:1,t:'num',w:'min-w-[50px]',c:'text-center'}, 
+                {k:'Precio_Unitario',e:1,t:'price',w:'min-w-[70px]'},
+                {k:'Total',e:0,v:fmtPrice(sub),w:'min-w-[70px]'}, 
+                {k:'Stock',e:0,v:low?`SÍ (${stock})`:`NO (${stock})`,c:(low?'poco-stock':'')+' text-center',w:'min-w-[50px]'},
                 {k:'Enlace',e:1,t:'link',w:'min-w-[50px]'}
             ];
-            cols.forEach(col => {
+
+            cols.forEach((col, colIdx) => {
                 const td = document.createElement('td');
-                if(col.w) td.className = col.w + (col.c ? ' ' + col.c : ''); else if(col.c) td.className = col.c;
-                if(col.e && EDITABLES.includes(col.k)) {
-                    td.className += ' cursor-text hover:bg-yellow-100 transition';
-                    td.contentEditable = editMode ? 'true' : 'false';
-                    td.dataset.i = idx; td.dataset.f = col.k;
-                    if(col.t==='link') {
-                        const v = item[col.k]||''; td.innerHTML = v ? `<a class="link link-primary text-xs" href="${v.trim()}" target="_blank" onclick="event.stopPropagation()">Link</a>` : '-';
-                    } else td.textContent = item[col.k] ?? '-';
-                    if(editMode) { td.onblur = onBlur; td.onkeydown = onKey; }
-                } else { td.textContent = col.v ?? item[col.k] ?? '-'; }
+                if(colIdx === 0) {
+                    td.className = 'col-num';
+                    td.textContent = rowNum;
+                } else {
+                    if(col.w) td.className = col.w + (col.c ? ' ' + col.c : ''); 
+                    else if(col.c) td.className = col.c;
+                    
+                    if(col.e && EDITABLES.includes(col.k)) {
+                        td.className += ' cursor-text hover:bg-yellow-100 transition';
+                        td.contentEditable = editMode ? 'true' : 'false';
+                        td.dataset.i = idx; td.dataset.f = col.k;
+                        if(col.t==='link') {
+                            const v = item[col.k]||''; 
+                            td.innerHTML = v ? `<a class="link link-primary text-xs" href="${v.trim()}" target="_blank" onclick="event.stopPropagation()">Link</a>` : '-';
+                        } else td.textContent = item[col.k] ?? '-';
+                        if(editMode) { td.onblur = onBlur; td.onkeydown = onKey; }
+                    } else { 
+                        td.textContent = col.v ?? item[col.k] ?? '-'; 
+                    }
+                }
                 tr.appendChild(td);
             });
             tbody.appendChild(tr);
@@ -220,8 +316,8 @@
         const item = actual[i], sub = parsePrice(item.Precio_Unitario)*(item.Cantidad||0), stock = item.Stock||0;
         const row = document.querySelectorAll('#cuerpoTabla tr')[i];
         if(row) {
-            row.children[8].textContent = fmtPrice(sub);
-            const td = row.children[9], low = stock<=12;
+            row.children[9].textContent = fmtPrice(sub);
+            const td = row.children[10], low = stock<=12;
             td.textContent = low ? `SÍ (${stock})` : `NO (${stock})`;
             td.className = (low ? 'poco-stock' : '') + ' text-center';
         }
@@ -258,17 +354,26 @@
     }
     function status(msg, type='info') {
         const el = document.getElementById('statusBar');
-        el.className = `alert alert-${type} py-2`;
-        el.innerHTML = `<span class="text-[10px] sm:text-xs">${msg}</span>`;
+        el.className = `alert alert-${type} py-1`;
+        el.innerHTML = `<span class="text-[9px] sm:text-xs">${msg}</span>`;
     }
 
     function addComponent() {
         actual.push({ _id: nextId++, Descripcion: 'Nuevo componente', Fabricante: '', No_ref_fabric: '', Proveedor: '', Codigo_Proveedor: '', Envio: '3-5 días', Cantidad: 1, Precio_Unitario: '0,00 €', Stock: 0, Enlace: '', Notas: '' });
         changes = true; render(); updateBtns(); status('➕ Agregado', 'warning');
-        setTimeout(() => { const rows = document.querySelectorAll('#cuerpoTabla tr'), last = rows[rows.length-1]; if(last) { last.scrollIntoView({behavior:'smooth',block:'center'}); if(editMode) last.querySelector('td[cursor-text]')?.focus(); } }, 150);
+        setTimeout(() => { 
+            const rows = document.querySelectorAll('#cuerpoTabla tr'), last = rows[rows.length-1]; 
+            if(last) { 
+                last.scrollIntoView({behavior:'smooth',block:'center'}); 
+                if(editMode) last.querySelector('td[cursor-text]')?.focus(); 
+            }
+        }, 150);
     }
     function resetData() {
-        if(confirm('¿Restaurar datos originales?')) { clearStorage(); actual = JSON.parse(JSON.stringify(orig)); genId(); changes = false; render(); updateBtns(); status('🔄 Restaurado', 'info'); }
+        if(confirm('¿Restaurar datos originales?')) { 
+            clearStorage(); actual = JSON.parse(JSON.stringify(orig)); genId(); changes = false; 
+            render(); updateBtns(); status('🔄 Restaurado', 'info'); 
+        }
     }
 
     function exportJSON() {
@@ -280,21 +385,18 @@
         status('✅ JSON descargado', 'success');
     }
 
-    // ================= EXPORTAR EXCEL PROFESIONAL =================
     function exportExcel() {
         if(changes) saveStorage();
-
-        // 1. Calcular el Gran Total
         let granTotal = 0;
         
-        // 2. Mapear los datos limpios para Excel (Sin IDs internos, nombres limpios)
-        const datosParaExcel = actual.map(it => {
+        const datosParaExcel = actual.map((it, idx) => {
             const precioNum = parsePrice(it.Precio_Unitario);
             const cantidadNum = parseInt(it.Cantidad) || 0;
             const totalLinea = precioNum * cantidadNum;
             granTotal += totalLinea;
 
             return {
+                "#": idx + 1,
                 "Descripcion": it.Descripcion,
                 "Fabricante": it.Fabricante,
                 "Nº ref. fabric": it.No_ref_fabric,
@@ -303,55 +405,18 @@
                 "Tiempo de envío (días)": it.Envio,
                 "Cantidad": cantidadNum,
                 "Precio": it.Precio_Unitario,
-                "Precio Total": totalLinea, // Número puro para que Excel lo sume si quiere
+                "Precio Total": totalLinea,
                 "Poco Stock": (it.Stock||0) <= 12 ? "SÍ" : "NO",
                 "Enlace": it.Enlace ? it.Enlace.trim() : ""
             };
         });
 
-        // 3. Crear la hoja de trabajo
-        const ws = XLSX.utils.json_to_sheet(datosParaExcel);
-
-        // 4. Configurar anchos de columna (para que se vea como en tu foto)
-        ws['!cols'] = [
-            { wch: 30 }, // Descripcion
-            { wch: 20 }, // Fabricante
-            { wch: 20 }, // Nº ref
-            { wch: 15 }, // Proveedor
-            { wch: 20 }, // Cód Prov
-            { wch: 12 }, // Envío
-            { wch: 8 },  // Cantidad
-            { wch: 12 }, // Precio
-            { wch: 14 }, // Precio Total
-            { wch: 12 }, // Poco Stock
-            { wch: 40 }  // Enlace
-        ];
-
-        // 5. Agregar la fila de TOTAL al final manualmente
-        // Obtenemos la última fila disponible
-        const lastRow = Object.keys(ws).filter(key => key.match(/^[A-Z]+[0-9]+$/)).pop();
-        const nextRowNum = parseInt(lastRow.replace(/^[A-Z]+/, '')) + 1;
-        const nextRowLabel = "A" + nextRowNum; // Ej: A18
-
-        // Insertamos celdas para la fila de total
-        // Nota: Esto es un truco para inyectar la fila de total en la estructura del sheet
-        // La celda H (Precio Total) es la columna 8 (índice 7 en 0-based, pero en Excel es H)
-        
-        // Agregamos el texto "TOTAL GENERAL" en la columna H (índice 7 de la fila anterior o nueva)
-        // Para simplificar con json_to_sheet, agregamos un objeto final al array ANTES de crear el sheet? 
-        // No, mejor lo hacemos directo en el sheet object para control total.
-        
-        // Método más seguro: Agregar un objeto "falso" al final de datosParaExcel antes de crear el sheet
-        // Pero queremos que solo la celda de total tenga valor.
-        
-        // Rehacemos el sheet usando aoa_to_sheet (Array of Arrays) para tener control total de la fila final
-        const headers = ["Descripcion", "Fabricante", "Nº ref. fabric", "Proveedor", "Código Proveedor", "Tiempo de envío (días)", "Cantidad", "Precio", "Precio Total", "Poco Stock", "Enlace"];
-        
-        const rows = [headers]; // Fila 1: Títulos
+        const headers = ["#", "Descripcion", "Fabricante", "Nº ref. fabric", "Proveedor", "Código Proveedor", "Tiempo de envío (días)", "Cantidad", "Precio", "Precio Total", "Poco Stock", "Enlace"];
+        const rows = [headers];
         
         datosParaExcel.forEach(row => {
             rows.push([
-                row["Descripcion"], row["Fabricante"], row["Nº ref. fabric"], row["Proveedor"],
+                row["#"], row["Descripcion"], row["Fabricante"], row["Nº ref. fabric"], row["Proveedor"],
                 row["Código Proveedor"], row["Tiempo de envío (días)"], row["Cantidad"], 
                 row["Precio"], row["Precio Total"], row["Poco Stock"], row["Enlace"]
             ]);
@@ -359,19 +424,18 @@
 
         // Fila de Total
         rows.push([
-            "", "", "", "", "", "", "", // Celdas vacías hasta la columna H
-            "TOTAL GENERAL",            // Columna H (índice 7)
-            granTotal,                  // Columna I (índice 8) - El valor numérico
-            "", ""                      // Resto vacío
+            "", "", "", "", "", "", "", "", "", 
+            "TOTAL GENERAL", granTotal, "", ""
         ]);
 
-        // Crear hoja desde Array de Arrays
-        const wsFinal = XLSX.utils.aoa_to_sheet(rows);
-        wsFinal['!cols'] = ws['!cols']; // Mantener anchos
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [
+            { wch: 4 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 15 },
+            { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 40 }
+        ];
 
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, wsFinal, "BOM_Placa_LED");
-        
+        XLSX.utils.book_append_sheet(wb, ws, "BOM_Placa_LED");
         const timestamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
         XLSX.writeFile(wb, `BOM_Placa_LED_${timestamp}.xlsx`);
     }
