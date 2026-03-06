@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOM Dashboard - Estilo Excel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --excel-green: #1d6f42;
+            --excel-blue: #4472c4;
+            --excel-blue-dark: #2f5597;
+            --border-color: #8eaadb;
+            --row-even: #d9e1f2;
+            --warning-bg: #ffff00;
+            --warning-text: #cc0000;
+            --edit-bg: #fff9c4;
+            --edit-border: #ffc107;
+            --admin-bg: #e9ecef;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Calibri', 'Arial', sans-serif; 
+            font-size: 11px; 
+            margin: 0; 
+            padding: 15px;
+            background: #f0f2f5; 
+        }
+
+        .container { max-width: 100%; }
+
+        /* 🔝 HEADER & ADMIN TOGGLE */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn-admin-toggle {
+            background: transparent;
+            border: 1px solid #ccc;
+            color: #666;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .btn-admin-toggle:hover { background: #ddd; color: #333; }
+        .btn-admin-toggle.active { background: var(--excel-blue); color: white; border-color: var(--excel-blue); }
+
+        /* 🛠️ PANEL DE ADMIN (Oculto por defecto) */
+        #adminPanel {
+            display: none; /* Oculto inicialmente */
+            background: var(--admin-bg);
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .admin-section {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .admin-section h4 { margin: 0 0 8px 0; font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .btn-admin {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-admin.blue { background: var(--excel-blue); color: white; }
+        .btn-admin.blue:hover { background: #365a9c; }
+        .btn-admin.green { background: var(--excel-green); color: white; }
+        .btn-admin.green:hover { background: #165633; }
+        .btn-admin.red { background: #c00; color: white; }
+        .btn-admin.red:hover { background: #900; }
+        .btn-admin.gray { background: #6c757d; color: white; }
+        .btn-admin.gray:hover { background: #5a6268; }
+        
+        .btn-admin.active { ring: 2px solid #000; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.2); }
+
+        .status-bar {
+            margin-top: 10px;
+            padding: 8px;
+            background: #fff;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        .status-ok { color: var(--excel-green); font-weight: bold; }
+        .status-warn { color: #c00; font-weight: bold; }
+
+        /* 📊 TABLA */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        th { background: var(--excel-blue); color: white; border: 1px solid var(--border-color); padding: 8px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
+        td { border: 1px solid var(--border-color); padding: 6px 10px; vertical-align: middle; white-space: nowrap; }
+        tr:nth-child(even) { background-color: var(--row-even); }
+        tr:hover { background-color: #f0f5ff; }
+
+        /* ✏️ Celdas editables */
+        td.editable { cursor: text; transition: background 0.15s; }
+        td.editable:hover { background: var(--edit-bg); outline: 2px dashed var(--edit-border); outline-offset: -2px; }
+        td.editable:focus { background: #fff; outline: 2px solid var(--excel-blue); outline-offset: -2px; }
+
+        .poco-stock { background: var(--warning-bg); color: var(--warning-text); font-weight: bold; text-align: center; }
+        .total-row { background: var(--excel-blue) !important; color: white; font-weight: bold; }
+        .total-val { background: var(--excel-blue-dark); color: white; text-align: right; padding-right: 15px; }
+        a { color: #0563c1; text-decoration: underline; }
+
+        /* 🎯 BOTÓN PRINCIPAL EXCEL (Footer) */
+        .main-footer {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-excel-primary {
+            background: linear-gradient(135deg, var(--excel-green), #2d8f55);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 8px;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(29, 111, 66, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn-excel-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(29, 111, 66, 0.4); }
+        .btn-excel-primary:active { transform: translateY(0); }
+
+        /* 📱 Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .btn-admin-toggle { width: 100%; }
+            .admin-grid { grid-template-columns: 1fr; }
+            .main-footer { padding: 15px; }
+            .btn-excel-primary { width: 100%; justify-content: center; font-size: 16px; padding: 15px 30px; }
+        }
+
+        /* Notas */
+        #notas-adicionales { margin-top: 25px; padding: 15px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; }
+        #notas-adicionales h3 { color: var(--excel-blue-dark); margin-top: 0; border-bottom: 2px solid var(--excel-blue); padding-bottom: 5px; font-size: 14px; }
+        #notas-adicionales ul { list-style-type: none; padding-left: 5px; line-height: 1.8; margin: 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header con Toggle Admin -->
+    <div class="header">
+        <h2 style="margin:0; font-size:16px; color:#333;">📋 BOM Dashboard</h2>
+        <button class="btn-admin-toggle" id="btnToggleAdmin" onclick="toggleAdminPanel()">🔧 Modo Admin</button>
+    </div>
+
+    <!-- Panel de Admin (Oculto por defecto) -->
+    <div id="adminPanel">
+        <div class="admin-grid">
+            <!-- Sección 1: Edición -->
+            <div class="admin-section">
+                <h4>Edición de Datos</h4>
+                <button class="btn-admin blue" id="btnEditMode" onclick="toggleEditMode()">✏️ Habilitar Edición Celdas</button>
+                <button class="btn-admin green" onclick="agregarComponente()">➕ Agregar Componente</button>
+            </div>
+            
+            <!-- Sección 2: Guardado -->
+            <div class="admin-section">
+                <h4>Guardar / Restaurar</h4>
+                <button class="btn-admin green" id="btnSave" onclick="guardarEnLocalStorage()" disabled>💾 Guardar Cambios</button>
+                <button class="btn-admin red" id="btnReset" onclick="resetDatos()">🗑️ Restaurar Originales</button>
+            </div>
+
+            <!-- Sección 3: Exportar Admin -->
+            <div class="admin-section">
+                <h4>Exportar Configuración</h4>
+                <button class="btn-admin gray" onclick="exportarJSON()">📤 Descargar JSON (Backup)</button>
+            </div>
+        </div>
+        
+        <!-- Barra de Estado -->
+        <div class="status-bar" id="statusBar">
+            🟢 Sistema listo. Los cambios se guardan automáticamente en tu navegador.
+        </div>
+    </div>
+
+    <!-- Tabla de Datos -->
+    <div class="table-wrapper">
+        <table id="tablaBOM">
+            <thead>
+                <tr>
+                    <th>Descripcion</th>
+                    <th>Fabricante</th>
+                    <th>Nº ref. fabric</th>
+                    <th>Proveedor</th>
+                    <th>Código Proveedor</th>
+                    <th>Tiempo de envío (días)</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Precio Total</th>
+                    <th>Poco Stock</th>
+                    <th>Enlace</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="8" style="text-align: right;">TOTAL GENERAL</td>
+                    <td id="totalGeneral" class="total-val">0,00 €</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Footer con Botón Principal Excel -->
+    <div class="main-footer">
+        <button class="btn-excel-primary" onclick="exportarExcel()">
+            📥 EXPORTAR A EXCEL (.xlsx)
+        </button>
+    </div>
+</div>
+
+<!-- Notas -->
+<div id="notas-adicionales">
+    <h3>Notas Importantes de Compra</h3>
+    <ul>
+        <li><strong>1. Condiciones de envío DigiKey:</strong> <a href="https://www.digikey.es/es/help-support/delivery-information/delivery-time-and-cost" target="_blank">Ver tiempos y costes</a></li>
+        <li><strong>2. Carrito de compra Mouser:</strong> <a href="https://www.mouser.es/Tools/SavedCart/Share?AccessID=8aa49678b1" target="_blank">Acceder al carrito guardado</a></li>
+        <li><strong>3. Condiciones de envío Mouser:</strong> <a href="https://www.mouser.es/help/orders-shipping" target="_blank">Ayuda con pedidos y envíos</a></li>
+    </ul>
+</div>
+
+<script>
+    // ================= CONFIGURACIÓN =================
+    const STORAGE_KEY = 'bom_dashboard_v3';
+    const DATA_FILE = 'data.json';
+    const CAMPOS_EDITABLES = ['Descripcion', 'Fabricante', 'No_ref_fabric', 'Proveedor', 'Codigo_Proveedor', 'Envio', 'Cantidad', 'Precio_Unitario', 'Stock', 'Enlace'];
+
+    // ================= ESTADO =================
+    let datosOriginales = [];
+    let datosActuales = [];
+    let modoEdicion = false;
+    let panelAdminAbierto = false;
+    let hayCambiosSinGuardar = false;
+    let nextId = 0;
+
+    // ================= INICIALIZACIÓN =================
+    async function iniciar() {
+        await cargarDatos();
+        aplicarDesdeLocalStorage();
+        generarNextId();
+        renderizarTabla();
+    }
+
+    // ================= CARGA DE DATOS =================
+    async function cargarDatos() {
+        try {
+            const res = await fetch(DATA_FILE);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            datosOriginales = await res.json();
+            console.log('✅ Cargados:', datosOriginales.length, 'items');
+        } catch (error) {
+            console.error('❌ Error:', error);
+            alert(`⚠️ No se pudo cargar ${DATA_FILE}.`);
+            datosOriginales = [];
+        }
+    }
+
+    function generarNextId() {
+        const maxId = Math.max(-1, ...datosActuales.map((d, i) => d._id ?? i));
+        nextId = maxId + 1;
+    }
+
+    // ================= LOCAL STORAGE =================
+    function guardarEnLocalStorage() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: datosActuales, nextId, timestamp: new Date().toISOString() }));
+            hayCambiosSinGuardar = false;
+            actualizarEstado('✅ Cambios guardados correctamente en el navegador', 'ok');
+            actualizarBotones();
+        } catch (e) {
+            actualizarEstado('⚠️ Error al guardar en navegador', 'warn');
+        }
+    }
+
+    function cargarDesdeLocalStorage() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.nextId) nextId = parsed.nextId;
+                return parsed.data || [];
+            }
+        } catch (e) { console.warn('⚠️ localStorage:', e); }
+        return null;
+    }
+
+    function aplicarDesdeLocalStorage() {
+        const stored = cargarDesdeLocalStorage();
+        if (stored?.length > 0) {
+            datosActuales = stored;
+            actualizarEstado('📦 Sesión anterior cargada', 'ok');
+        } else {
+            datosActuales = JSON.parse(JSON.stringify(datosOriginales));
+            actualizarEstado('🟢 Sistema listo', 'ok');
+        }
+    }
+
+    function borrarLocalStorage() {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // ================= RENDERIZADO =================
+    function renderizarTabla() {
+        const tbody = document.getElementById('cuerpoTabla');
+        tbody.innerHTML = '';
+        let sumaTotal = 0;
+
+        datosActuales.forEach((item, index) => {
+            const pUnit = parsePrecio(item.Precio_Unitario);
+            const cantidad = parseInt(item.Cantidad) || 0;
+            const subtotal = pUnit * cantidad;
+            sumaTotal += subtotal;
+            const stock = parseInt(item.Stock) || 0;
+            const esPocoStock = stock <= 12;
+
+            const tr = document.createElement('tr');
+            
+            const columnas = [
+                { key: 'Descripcion', editable: true },
+                { key: 'Fabricante', editable: true },
+                { key: 'No_ref_fabric', editable: true },
+                { key: 'Proveedor', editable: true },
+                { key: 'Codigo_Proveedor', editable: true },
+                { key: 'Envio', editable: true },
+                { key: 'Cantidad', editable: true, type: 'number' },
+                { key: 'Precio_Unitario', editable: true, type: 'price' },
+                { key: 'Precio_Total', editable: false, value: formatPrecio(subtotal) },
+                { key: 'Poco_Stock', editable: false, value: esPocoStock ? `SÍ (${stock})` : `NO (${stock})`, class: esPocoStock ? 'poco-stock' : '' },
+                { key: 'Enlace', editable: true, type: 'link' }
+            ];
+
+            columnas.forEach(col => {
+                const td = document.createElement('td');
+                if (col.editable && CAMPOS_EDITABLES.includes(col.key)) {
+                    td.className = 'editable';
+                    td.contentEditable = modoEdicion ? 'true' : 'false';
+                    td.dataset.index = index;
+                    td.dataset.field = col.key;
+                    if (col.type === 'link') {
+                        const val = item[col.key] || '';
+                        td.innerHTML = val ? `<a href="${val}" target="_blank">Link</a>` : '-';
+                    } else {
+                        td.textContent = item[col.key] ?? '-';
+                    }
+                    if (modoEdicion) {
+                        td.addEventListener('blur', onCellBlur);
+                        td.addEventListener('keydown', onCellKeydown);
+                    }
+                } else {
+                    td.textContent = col.value ?? item[col.key] ?? '-';
+                    if (col.class) td.className = col.class;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        document.getElementById('totalGeneral').textContent = formatPrecioTotal(sumaTotal);
+    }
+
+    // ================= EDICIÓN =================
+    function onCellBlur(e) {
+        const td = e.target;
+        const index = parseInt(td.dataset.index);
+        const field = td.dataset.field;
+        const nuevoValor = td.textContent.trim();
+        
+        if (field === 'Cantidad' || field === 'Stock') datosActuales[index][field] = parseInt(nuevoValor) || 0;
+        else if (field === 'Precio_Unitario') datosActuales[index][field] = nuevoValor.includes('€') ? nuevoValor : `${nuevoValor} €`;
+        else datosActuales[index][field] = nuevoValor;
+        
+        hayCambiosSinGuardar = true;
+        recalcularFila(index);
+        recalcularTotalGeneral();
+        actualizarEstado('✏️ Cambios pendientes de guardar...', 'warn');
+        actualizarBotones();
+    }
+
+    function onCellKeydown(e) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }
+
+    // ================= CÁLCULOS =================
+    function parsePrecio(texto) { if (!texto) return 0; return parseFloat(texto.toString().replace('€','').replace(',','.').trim()) || 0; }
+    function formatPrecio(v) { return `${v.toLocaleString('es-ES',{minimumFractionDigits:3})} €`; }
+    function formatPrecioTotal(v) { return v.toLocaleString('es-ES',{style:'currency',currency:'EUR'}); }
+
+    function recalcularFila(index) {
+        const item = datosActuales[index];
+        const subtotal = parsePrecio(item.Precio_Unitario) * (item.Cantidad || 0);
+        const stock = item.Stock || 0;
+        const filas = document.querySelectorAll('#cuerpoTabla tr');
+        const fila = filas[index];
+        if (fila) {
+            fila.children[8].textContent = formatPrecio(subtotal);
+            const tdStock = fila.children[9];
+            const esPoco = stock <= 12;
+            tdStock.textContent = esPoco ? `SÍ (${stock})` : `NO (${stock})`;
+            tdStock.className = esPoco ? 'poco-stock' : '';
+        }
+    }
+
+    function recalcularTotalGeneral() {
+        let suma = 0;
+        datosActuales.forEach(item => suma += parsePrecio(item.Precio_Unitario) * (item.Cantidad || 0));
+        document.getElementById('totalGeneral').textContent = formatPrecioTotal(suma);
+    }
+
+    // ================= INTERFAZ ADMIN =================
+    function toggleAdminPanel() {
+        panelAdminAbierto = !panelAdminAbierto;
+        const panel = document.getElementById('adminPanel');
+        const btn = document.getElementById('btnToggleAdmin');
+        
+        if (panelAdminAbierto) {
+            panel.style.display = 'block';
+            btn.classList.add('active');
+            btn.textContent = '❌ Cerrar Modo Admin';
+        } else {
+            panel.style.display = 'none';
+            btn.classList.remove('active');
+            btn.textContent = '🔧 Modo Admin';
+        }
+    }
+
+    function toggleEditMode() {
+        modoEdicion = !modoEdicion;
+        const btn = document.getElementById('btnEditMode');
+        
+        if (modoEdicion) {
+            btn.textContent = '✅ Edición Activada';
+            btn.classList.add('active');
+            document.body.classList.add('edit-mode');
+            actualizarEstado('✏️ Haz clic en cualquier celda para editar. Presiona Enter para confirmar.');
+        } else {
+            btn.textContent = '✏️ Habilitar Edición Celdas';
+            btn.classList.remove('active');
+            document.body.classList.remove('edit-mode');
+            actualizarEstado('🔒 Edición desactivada. Tabla en modo lectura.');
+        }
+        
+        document.querySelectorAll('td.editable').forEach(td => {
+            td.contentEditable = modoEdicion ? 'true' : 'false';
+            if (modoEdicion) {
+                td.addEventListener('blur', onCellBlur);
+                td.addEventListener('keydown', onCellKeydown);
+            } else {
+                td.removeEventListener('blur', onCellBlur);
+                td.removeEventListener('keydown', onCellKeydown);
+            }
+        });
+        renderizarTabla();
+    }
+
+    function actualizarBotones() {
+        const btnSave = document.getElementById('btnSave');
+        if (hayCambiosSinGuardar) {
+            btnSave.disabled = false;
+            btnSave.textContent = '💾 Guardar Cambios Pendientes';
+            btnSave.classList.add('green');
+        } else {
+            btnSave.disabled = true;
+            btnSave.textContent = '✅ Todo Guardado';
+            btnSave.classList.remove('green');
+        }
+    }
+
+    function resetDatos() {
+        if (confirm('¿Restaurar datos originales de data.json? Se perderán cambios locales.')) {
+            borrarLocalStorage();
+            datosActuales = JSON.parse(JSON.stringify(datosOriginales));
+            generarNextId();
+            hayCambiosSinGuardar = false;
+            renderizarTabla();
+            actualizarBotones();
+            actualizarEstado('🔄 Datos restaurados a originales', 'ok');
+        }
+    }
+
+    function actualizarEstado(msg, type = 'ok') {
+        const el = document.getElementById('statusBar');
+        el.textContent = msg;
+        el.className = 'status-bar status-' + type;
+    }
+
+    // ================= AGREGAR COMPONENTE =================
+    function agregarComponente() {
+        const nuevoItem = {
+            _id: nextId++,
+            Descripcion: 'Nuevo componente',
+            Fabricante: '',
+            No_ref_fabric: '',
+            Proveedor: '',
+            Codigo_Proveedor: '',
+            Envio: '',
+            Cantidad: 1,
+            Precio_Unitario: '0,00 €',
+            Stock: 0,
+            Enlace: ''
+        };
+        
+        datosActuales.push(nuevoItem);
+        hayCambiosSinGuardar = true;
+        renderizarTabla();
+        actualizarBotones();
+        actualizarEstado('➕ Componente agregado. Recuerda guardar los cambios.', 'warn');
+        
+        setTimeout(() => {
+            const filas = document.querySelectorAll('#cuerpoTabla tr');
+            const ultimaFila = filas[filas.length - 1];
+            if (ultimaFila) {
+                ultimaFila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (modoEdicion) {
+                    const primeraEditable = ultimaFila.querySelector('td.editable');
+                    if (primeraEditable) primeraEditable.focus();
+                }
+            }
+        }, 100);
+    }
+
+    // ================= EXPORTAR JSON =================
+    function exportarJSON() {
+        if (hayCambiosSinGuardar) guardarEnLocalStorage();
+        const datosParaExportar = datosActuales.map(({_id, ...rest}) => rest);
+        const blob = new Blob([JSON.stringify(datosParaExportar, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bom_actualizado_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        actualizarEstado('✅ JSON descargado listo para subir a GitHub', 'ok');
+    }
+
+    // ================= EXPORTAR EXCEL =================
+    function exportarExcel() {
+        if (hayCambiosSinGuardar) guardarEnLocalStorage();
+        const worksheet = XLSX.utils.json_to_sheet(datosActuales.map(item => ({
+            'Descripcion': item.Descripcion, 'Fabricante': item.Fabricante, 'Nº_ref_fabric': item.No_ref_fabric,
+            'Proveedor': item.Proveedor, 'Codigo_Proveedor': item.Codigo_Proveedor, 'Tiempo_envio_dias': item.Envio,
+            'Cantidad': item.Cantidad, 'Precio_Unitario': item.Precio_Unitario,
+            'Precio_Total': parsePrecio(item.Precio_Unitario) * (item.Cantidad || 0),
+            'Stock': item.Stock, 'Poco_Stock': (item.Stock || 0) <= 12 ? 'SÍ' : 'NO', 'Enlace': item.Enlace
+        })));
+        worksheet['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 40 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "BOM");
+        XLSX.writeFile(workbook, `BOM_Placa_LED_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`);
+    }
+
+    document.addEventListener('DOMContentLoaded', iniciar);
+</script>
+</body>
+</html>
